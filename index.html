@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Excel to JSON Converter</title>
+    <!-- Use Inter font from Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+            color: #1f2937;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
+
+    <div class="bg-white p-8 rounded-2xl shadow-xl w-full max-w-2xl transform transition-all hover:scale-105">
+        <div class="flex flex-col items-center justify-center">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-emerald-500 mb-4" viewBox="0 0 20 20" fill="currentColor">
+                <path d="M10 3a1 1 0 100 2h.01a1 1 0 100-2H10zm3 1a1 1 0 11-2 0 1 1 0 012 0zm-2 4a1 1 0 100 2h.01a1 1 0 100-2H11zm-2 0a1 1 0 11-2 0 1 1 0 012 0zm4 1a1 1 0 100 2h.01a1 1 0 100-2H13zM9 11a1 1 0 100 2h.01a1 1 0 100-2H9zm2 0a1 1 0 11-2 0 1 1 0 012 0zm4 1a1 1 0 100 2h.01a1 1 0 100-2H15zm-2 0a1 1 0 11-2 0 1 1 0 012 0zm2 4a1 1 0 100 2h.01a1 1 0 100-2H15z" />
+            </svg>
+            <h1 class="text-3xl sm:text-4xl font-extrabold text-gray-900 mb-2 text-center">Excel to JSON Converter</h1>
+            <p class="text-center text-gray-500 mb-6 max-w-md">Easily convert your Excel (.xlsx, .xls) data into a structured JSON format. Simply upload your file below.</p>
+        </div>
+
+        <!-- File Upload Section -->
+        <div class="flex items-center justify-center mb-6">
+            <label for="excel-file" class="w-full">
+                <div class="cursor-pointer bg-gray-50 border-2 border-dashed border-gray-300 rounded-xl p-6 text-center hover:bg-gray-100 transition-colors duration-200">
+                    <p class="text-gray-500">Click to upload your Excel file</p>
+                    <p class="text-sm text-gray-400 mt-1">(.xlsx or .xls)</p>
+                </div>
+            </label>
+            <input type="file" id="excel-file" class="hidden" accept=".xlsx, .xls" />
+        </div>
+
+        <!-- Status Message -->
+        <div id="status-message" class="text-center text-sm font-medium text-red-500 mb-4 h-6"></div>
+
+        <!-- JSON Output Section -->
+        <div class="relative mb-4">
+            <label for="json-output" class="block text-sm font-medium text-gray-700 mb-2">Generated JSON</label>
+            <textarea id="json-output" rows="10" readonly class="w-full p-4 bg-gray-50 border border-gray-300 rounded-xl resize-none font-mono text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all duration-200"></textarea>
+            <button id="copy-button" class="absolute top-10 right-4 p-2 bg-emerald-500 text-white rounded-lg shadow-md hover:bg-emerald-600 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-400">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" />
+                    <path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 013 3v11a3 3 0 01-3 3H6a3 3 0 01-3-3V5a3 3 0 013-3z" />
+                </svg>
+            </button>
+        </div>
+
+    </div>
+
+    <!-- XLSX Library CDN -->
+    <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const fileInput = document.getElementById('excel-file');
+            const jsonOutput = document.getElementById('json-output');
+            const statusMessage = document.getElementById('status-message');
+            const copyButton = document.getElementById('copy-button');
+
+            // Handle file input change event
+            fileInput.addEventListener('change', (event) => {
+                const file = event.target.files[0];
+                if (!file) {
+                    statusMessage.textContent = 'Please select a file.';
+                    jsonOutput.value = '';
+                    return;
+                }
+
+                statusMessage.textContent = 'Reading file...';
+                jsonOutput.value = '';
+
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = XLSX.read(data, { type: 'array' });
+
+                        // Get the first sheet name
+                        const sheetName = workbook.SheetNames[0];
+                        const worksheet = workbook.Sheets[sheetName];
+
+                        // Convert the worksheet to JSON
+                        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                        const header = jsonData[0];
+                        const rows = jsonData.slice(1);
+                        
+                        // Create an array of objects
+                        const formattedJson = rows.map(row => {
+                            const obj = {};
+                            header.forEach((key, index) => {
+                                obj[key] = row[index];
+                            });
+                            return obj;
+                        });
+
+                        jsonOutput.value = JSON.stringify(formattedJson, null, 2);
+                        statusMessage.textContent = 'Conversion successful!';
+                        statusMessage.className = 'text-center text-sm font-medium text-emerald-500 mb-4 h-6';
+
+                    } catch (error) {
+                        statusMessage.textContent = 'Error converting file. Please check the file format.';
+                        statusMessage.className = 'text-center text-sm font-medium text-red-500 mb-4 h-6';
+                        console.error('Conversion error:', error);
+                    }
+                };
+                reader.onerror = function() {
+                    statusMessage.textContent = 'Error reading file.';
+                    statusMessage.className = 'text-center text-sm font-medium text-red-500 mb-4 h-6';
+                };
+                reader.readAsArrayBuffer(file);
+            });
+
+            // Handle copy button click
+            copyButton.addEventListener('click', () => {
+                if (jsonOutput.value.trim() === '') {
+                    return;
+                }
+                jsonOutput.select();
+                try {
+                    document.execCommand('copy');
+                    const originalText = copyButton.innerHTML;
+                    copyButton.innerHTML = 'Copied!';
+                    setTimeout(() => {
+                        copyButton.innerHTML = originalText;
+                    }, 2000);
+                } catch (err) {
+                    console.error('Failed to copy text:', err);
+                }
+            });
+        });
+    </script>
+</body>
+</html>
